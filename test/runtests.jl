@@ -2,5 +2,5 @@ using comorbid
 using Test
 
 @testset "comorbid.jl" begin
-    # Write your own tests here.
+    @test isapprox(exact_burden_term([.1], [.8], [true]), [.08])
 end

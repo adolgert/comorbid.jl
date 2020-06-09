@@ -1,5 +1,6 @@
 module comorbid
 
-greet() = print("Hello World!")
+include("grey.jl")
 
+export grey_next_flip
 end # module
