@@ -1,0 +1,13 @@
+name = "comorbid"
+uuid = "a4a19538-6b2e-4b72-b4a0-52a25d19702b"
+authors = ["Drew Dolgert"]
+version = "0.1.0"
+
+[compat]
+julia = "1.4"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test"]
