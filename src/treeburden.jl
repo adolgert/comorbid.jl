@@ -62,10 +62,47 @@ function treeburden(weights, prevalences, epsilon)
 end
 
 
+function depthburden(weights, prevalences, maxdepth)
+    n = length(prevalences)
+    b = zeros(Float64, n)
+    which = nextburden(zeros(Bool, n))
+    iter_count = 0
+    while any(which)
+        term = exact_burden_term(weights, prevalences, which)
+        b += term
+        if sum(which) < maxdepth
+            which = nextburden(which)
+        else
+            which = nextburden(which, true)
+        end
+        iter_count += 1
+    end
+    iterfrac = iter_count / (2^n - 1)
+    println("treeburden $(iterfrac)")
+    b
+end
+
+
 function tree_burden_random(cnt, epsilon)
     w = rand(cnt)
     p = rand(cnt)
     exact = exact_burden(w, p)
     tree = treeburden(w, p, epsilon)
     [sum(tree), total_burden(w, p), sum(exact), maximum(abs.(tree .- exact))]
+end
+
+
+
+"""
+Using an arbitrary depth cutoff performs pretty poorly too. Even evaluating
+50% of the total possible terms results in 30% error.
+"""
+function depth_burden_random(cnt, depth)
+    w = rand(cnt)
+    p = rand(cnt)
+    exact = exact_burden(w, p)
+    tree = depthburden(w, p, depth)
+    total = sum(exact)
+    trial = tree * total / sum(tree)
+    [sum(tree), total_burden(w, p), sum(exact), maximum(abs.((trial .- exact) ./ exact))]
 end

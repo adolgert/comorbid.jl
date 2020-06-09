@@ -51,10 +51,28 @@ function total_burden(weights, prevalences)
 end
 
 
+function fake_burden(weights, prevalences)
+    total = total_burden(weights, prevalences)
+    w = weights .* prevalences
+    w * total / sum(w)
+end
+
 
 function total_burden_random(cnt)
     w = rand(cnt)
     p = rand(cnt)
     exact = exact_burden(w, p)
     [total_burden(w, p), sum(exact)]
+end
+
+
+"""
+Error in the fake burden is above 10%, even for 20 causes.
+"""
+function fake_burden_random(cnt)
+    w = rand(cnt)
+    p = rand(cnt)
+    exact = exact_burden(w, p)
+    fake = fake_burden(w, p)
+    [sum(fake), sum(exact), maximum(abs.((fake .- exact) ./ exact))]
 end
