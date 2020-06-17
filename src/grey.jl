@@ -1,3 +1,13 @@
+"""
+This file calculates exact burden and fake burden.
+"""
+
+"""
+A Grey code is a map from a binary number to a different binary number.
+The magic is that if you call this `n=2^i` times, you will see every binary
+number between `0` and `n-1`, but each one will be only one digit off from
+the last. This function, in particular, tells you which bit will flip next.
+"""
 function grey_next_flip(n)
     for i in 1:1:64
         if n & 1 == 1
@@ -10,6 +20,9 @@ function grey_next_flip(n)
 end
 
 
+"""
+Calculates (b_j /sum(b_i))(1 - prod(1-b_i)) (prod(p_i) prod(1 - p_j)).
+"""
 function exact_burden_term(weights, prevalences, which)
     w = weights[which]
     yes = prevalences[which]
@@ -20,6 +33,10 @@ function exact_burden_term(weights, prevalences, which)
 end
 
 
+"""
+Calculates (b_j /sum(b_i))(1 - prod(1-b_i)) (prod(p_i) prod(1 - p_j))
+and adds it to the given running sum.
+"""
 function exact_burden_term!(weights, prevalences, which, running_sum)
     w = weights[which]
     yes = prevalences[which]
@@ -41,16 +58,27 @@ function exact_burden(weights, prevalences)
 end
 
 
+"""
+Make random prevalences and burdens to calculate.
+"""
 function exact_burden_random(cnt)
     exact_burden(rand(cnt), rand(cnt))
 end
 
 
+"""
+This is the super simple, exact total burden for a population. Given how simple it is,
+it's surprising that we don't have a closed form for individual contributions to burden.
+"""
 function total_burden(weights, prevalences)
     1 - prod(1 .- weights .* prevalences)
 end
 
 
+"""
+Maybe we can divide the total burden by some fraction in order to get
+individual cause's burden. Nah.
+"""
 function fake_burden(weights, prevalences)
     total = total_burden(weights, prevalences)
     w = weights .* prevalences
