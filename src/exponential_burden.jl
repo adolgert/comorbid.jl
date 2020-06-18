@@ -1,4 +1,11 @@
-
+"""
+This is much like the exact burden, except for replacing the burden adjustment with
+a similar adjustment. The original was `1 - prod(1 - b_i)`. This one is
+`1 - exp(-sum(b_i))`. We try this approximation because this series, as a whole series,
+can be integrated, term-by-term, in a way that will allow us to calculate it in a
+closed form. You see the long calculation here, but, if this does well, then we
+implement the much faster version.
+"""
 function exponential_burden_term(weights, prevalences, which)
     w = weights[which]
     yes = prevalences[which]

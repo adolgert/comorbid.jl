@@ -1,3 +1,10 @@
+"""
+These are two ways to calculate the total burden of a population, attributed to
+each cause, by short-circuiting the complete sum. The complete sum has 2^n terms,
+where n is the number of causes. These examples try to cut off after burden
+terms get small or the number of comorbidities gets high. Neither works super well.
+"""
+
 function nextburden(state, leaf = false)
     which = copy(state)
     cstate = cumsum(which)
