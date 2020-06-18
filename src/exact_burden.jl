@@ -118,16 +118,33 @@ function plot_compare(weight, prevalence, burden)
     total = sum(burden)
     estimated = (weight .* prevalence) * total / sum(weight .* prevalence)
     rel = relerr(estimated, burden)
-    rq = Statistics.quantile(rel, [.1, .3, .5, .7, .9])
-    ranges = vcat([minimum(rel) - 1], rq, [maximum(rel) + 1])
-    #colors = [:red, :orange, :yellow, :green, :blue, :violet, :black]
-    means = 0.5 * (ranges[1:end - 1] + ranges[2:end])
-    colors = get(ColorSchemes.buda, means)
-    callit = scatter
-    for i in 1:(length(ranges) - 1)
-        part = ranges[i] .<= rel .< ranges[i + 1]
-        display(callit(weight[part], prevalence[part], markercolor = colors[i]))
-        callit = scatter!
+    normalized = (rel .- minimum(rel)) / (maximum(rel) - minimum(rel))
+    colors = get(ColorSchemes.buda, normalized)
+    scatter(weight, prevalence, markercolor = colors)
+end
+
+
+"""
+Error in the fake burden is above 10%, even for 20 causes.
+"""
+function fake_burden_basic_plot(cnt)
+    plotter = scatter
+    plot_cnt = 20
+    for i in 1:plot_cnt
+        w = rand(cnt)
+        p = rand(cnt)
+        exact = exact_burden(w, p)
+        fake = fake_burden(w, p)
+        rplot = plotter(
+                fake,
+                exact,
+                markercolor = get(ColorSchemes.tab20b, (i-1)/(plot_cnt - 1)),
+                legend = false
+                )
+        plotter = scatter!
+        if i == plot_cnt
+            display(rplot)
+        end
     end
 end
 
@@ -160,7 +177,7 @@ function plot_by_cause(weight, relerr_and_prevalence)
     cause_cnt = length(weight)
     trial_cnt = size(relerr_and_prevalence, 3)
     callit = scatter
-    for cidx in 1:5
+    for cidx in 1:5:cause_cnt
         color = get(ColorSchemes.tab20b, (cidx - 1) / (cause_cnt - 1))
         rel = reshape(relerr_and_prevalence[cidx, 1, :], trial_cnt)
         prev = reshape(relerr_and_prevalence[cidx, 2, :], trial_cnt)

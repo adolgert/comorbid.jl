@@ -42,14 +42,41 @@ This repository finds ways to calculate the sum of the terms
 over all combinations of causes.
 
 * Exact calculation. This takes about 40s for 25 causes. We need it for over 500 causes.
+  In `exact_burden.jl`.
 
 * Fake calculation. We have an exact expression for total comorbidity. This reallocates it.
-  It has error above ten percent in some sample cases.
+  It has error above ten percent in some sample cases. In `exact_burden.jl`.
+
 
 * Exponential version. This uses a modified version of the above equation that's close
   in value and can be calculated exactly. This has large error for some cases but seems
-  maybe OK when there are more causes. It has potential.
+  maybe OK when there are more causes. It has potential. In `exponential_burden.jl`.
 
 * Sum with cutoffs. This looks at two different ways to short-circuit the exact
   calculation. One throws out cases with too many comorbidities. The other stops
   adding terms when the burden estimates are under a cutoff. Both perform poorly.
+  In `treeburden.jl`.
+
+For example, if you calculate exact burden and ask about the relative error of
+the fake burden, the one that uses the correct total but multiplies it by
+`w_i * p_i / sum(w_j * p_j)`, then you see that it has very regular behavior.
+
+![Fake vs Actual](fake_vs_expected.png)
+
+This is fake burden versus exact burden for 20 causes, overplotted for 20 trials.
+Error can be ten percent. The next plot looks at trends in that error in order to see
+whether we will be able to model it and correct it.
+
+![Trend by prevalence](prevalence_by_weight.png)
+
+This is weight of a cause on the x-axis, prevalence on the y-axis. There are a hundred
+trials plotted, with different prevalences but the same weights. The color is the
+relative error between fake and exact. We see two clear trends, one left-right
+with increasing weight, and one bottom-up on increasing prevalence.
+
+![Trend by draw](burden_by_prevalence.png)
+
+This is the relative error in the fake burden versus exact burden, plotted as a function
+of prevalence. The four colors are for four different causes, each plotted for 100 trials.
+This explains that, for the same weights, relative error is a function of prevalence with
+a strong trend.
