@@ -1,3 +1,5 @@
+using Plots
+using ColorSchemes
 """
 This file calculates exact burden and fake burden.
 """
@@ -62,7 +64,10 @@ end
 Make random prevalences and burdens to calculate.
 """
 function exact_burden_random(cnt)
-    exact_burden(rand(cnt), rand(cnt))
+    weights = rand(cnt)
+    prevalences = rand(cnt)
+    burden = exact_burden(weights, prevalences)
+    weights, prevalences, burden
 end
 
 
@@ -86,6 +91,9 @@ function fake_burden(weights, prevalences)
 end
 
 
+relerr(observed, expected) = (observed .- expected) ./ observed
+
+
 function total_burden_random(cnt)
     w = rand(cnt)
     p = rand(cnt)
@@ -103,4 +111,80 @@ function fake_burden_random(cnt)
     exact = exact_burden(w, p)
     fake = fake_burden(w, p)
     [sum(fake), sum(exact), maximum(abs.((fake .- exact) ./ exact))]
+end
+
+
+function plot_compare(weight, prevalence, burden)
+    total = sum(burden)
+    estimated = (weight .* prevalence) * total / sum(weight .* prevalence)
+    rel = relerr(estimated, burden)
+    rq = Statistics.quantile(rel, [.1, .3, .5, .7, .9])
+    ranges = vcat([minimum(rel) - 1], rq, [maximum(rel) + 1])
+    #colors = [:red, :orange, :yellow, :green, :blue, :violet, :black]
+    means = 0.5 * (ranges[1:end - 1] + ranges[2:end])
+    colors = get(ColorSchemes.buda, means)
+    callit = scatter
+    for i in 1:(length(ranges) - 1)
+        part = ranges[i] .<= rel .< ranges[i + 1]
+        display(callit(weight[part], prevalence[part], markercolor = colors[i]))
+        callit = scatter!
+    end
+end
+
+
+function generate_prevalences(cause_cnt, trial_cnt)
+    weight = rand(cause_cnt)
+    relerr_and_prevalence = zeros(Float64, cause_cnt, 2, trial_cnt)
+    for t in 1:trial_cnt
+        prevalence = rand(cause_cnt)
+        burden = exact_burden(weight, prevalence)
+        total = sum(burden)
+        estimated = (weight .* prevalence) * total / sum(weight .* prevalence)
+        rel = relerr(estimated, burden)
+        relerr_and_prevalence[:, 1, t] = rel
+        relerr_and_prevalence[:, 2, t] = prevalence
+    end
+    weight, relerr_and_prevalence
+end
+
+
+"""
+This plot asks how the error of a single cause depends on its
+prevalence. It plots relative error by prevalence. It shows that
+larger prevalence is estimated below what it should be. There is scatter in
+this plot. I'll bet that scatter is a function of the total prevalence for
+all causes for each trial. Either as a sum or as it appears in the total burden
+calculation.
+"""
+function plot_by_cause(weight, relerr_and_prevalence)
+    cause_cnt = length(weight)
+    trial_cnt = size(relerr_and_prevalence, 3)
+    callit = scatter
+    for cidx in 1:5
+        color = get(ColorSchemes.tab20b, (cidx - 1) / (cause_cnt - 1))
+        rel = reshape(relerr_and_prevalence[cidx, 1, :], trial_cnt)
+        prev = reshape(relerr_and_prevalence[cidx, 2, :], trial_cnt)
+        display(callit(prev, rel, markercolor = color))
+        callit = scatter!
+    end
+end
+
+
+"""
+This plots prevalence by weight. It colors by relative error. We see that
+larger weights tend to skew towards positive relative error.
+"""
+function plot_trials(weight, relerr_and_prevalence)
+    cause_cnt = length(weight)
+    trial_cnt = size(relerr_and_prevalence, 3)
+    w = repeat(weight, trial_cnt)
+    rel = reshape(relerr_and_prevalence[:, 1, :], cause_cnt * trial_cnt)
+    normrel = (rel .- minimum(rel)) / (maximum(rel) - minimum(rel))
+    p = reshape(relerr_and_prevalence[:, 2, :], cause_cnt * trial_cnt)
+    colors = get(ColorSchemes.viridis, normrel)
+
+    @show length(w)
+    @show length(rel)
+    @show length(p)
+    display(scatter(w, p, markercolor = colors))
 end
