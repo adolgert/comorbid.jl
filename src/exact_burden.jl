@@ -1,10 +1,13 @@
 using Plots
 using ColorSchemes
+using Combinatorics: combinations
 """
 This file calculates exact burden and fake burden.
 """
 
 """
+    grey_next_flip(n)
+
 A Grey code is a map from a binary number to a different binary number.
 The magic is that if you call this `n=2^i` times, you will see every binary
 number between `0` and `n-1`, but each one will be only one digit off from
@@ -61,6 +64,59 @@ end
 
 
 """
+The burden if we allow up to `n` comorbidities. `n=1` means you can have
+one disease at a time.
+"""
+function order_n_burden(weights, prevalences, n)
+    cnt = length(weights)
+    burden = similar(prevalences)
+    fill!(burden, 0)
+    which = zeros(Bool, cnt)
+    for depth in 1:n
+        for como_idx in combinations(1:cnt, depth)
+            fill!(which, false)
+            which[como_idx] .= true
+            exact_burden_term!(weights, prevalences, which, burden)
+        end
+    end
+    burden
+end
+
+"""
+A term-by-term gradient calculation with respect to index i
+"""
+function partial_term!(weights, prevalences, which, running_sum, i)
+    w = weights[which]
+    p = copy(prevalences)
+    p[i] = which[i] ? 1 : 2  # 1 - no = -1, which is the derivative.
+    yes = p[which]
+    no = p[.!which]
+    running_sum[which] += w * ((1 - prod(1 .- w)) * prod(yes) * prod(1 .- no) / sum(w))
+end
+
+function order_n_partial(weights, prevalences, n)
+    cnt = length(weights)
+    partial = zeros(Float64, cnt, cnt)
+    which = zeros(Bool, cnt)
+    for partial_wrt_j in 1:cnt
+        burden = zeros(Float64, cnt)
+        fill!(burden, 0)
+        # Loop over how many comorbidities a subpopulation has.
+        for depth in 1:n
+            # Loop over different choices of comorbidities for each subpopulation.
+            for como_idx in combinations(1:cnt, depth - 1)
+                fill!(which, false)
+                which[como_idx] .= true
+                partial_term!(weights, prevalences, which, burden, partial_wrt_j)
+            end
+        end
+        partial[:, partial_wrt_j] .= burden
+    end
+    partial
+end
+
+
+"""
 Make random prevalences and burdens to calculate.
 """
 function exact_burden_random(cnt)
@@ -77,6 +133,20 @@ it's surprising that we don't have a closed form for individual contributions to
 """
 function total_burden(weights, prevalences)
     1 - prod(1 .- weights .* prevalences)
+end
+
+
+"""
+Partial derivative of total comorbidity with respect to prevalence.
+Writes into the `partials` buffer.
+"""
+function partial_wrt_prevalence!(partials, weights, prevalences)
+    for i in 1:length(partials)
+        save_p = prevalences[i]
+        prevalences[i] = zero(eltype(prevalences))
+        partials[i] = weights[i] * prod(1 .- weights .* prevalences)
+        prevalences[i] = save_p
+    end
 end
 
 
@@ -125,16 +195,16 @@ end
 
 
 """
-Error in the fake burden is above 10%, even for 20 causes.
+Error in the fake burden is above 10%, even for `cnt` causes.
 """
-function fake_burden_basic_plot(cnt)
+function fake_burden_basic_plot(fake_func, cnt)
     plotter = scatter
     plot_cnt = 20
     for i in 1:plot_cnt
         w = rand(cnt)
         p = rand(cnt)
         exact = exact_burden(w, p)
-        fake = fake_burden(w, p)
+        fake = fake_func(w, p)
         rplot = plotter(
                 fake,
                 exact,
@@ -149,14 +219,19 @@ function fake_burden_basic_plot(cnt)
 end
 
 
-function generate_prevalences(cause_cnt, trial_cnt)
+function fake_gen(weight, prevalence)
+    total = total_burden(weight, prevalence)
+    estimated = (weight .* prevalence) * total / sum(weight .* prevalence)
+end
+
+
+function generate_prevalences(burden_gen, cause_cnt, trial_cnt)
     weight = rand(cause_cnt)
     relerr_and_prevalence = zeros(Float64, cause_cnt, 2, trial_cnt)
     for t in 1:trial_cnt
         prevalence = rand(cause_cnt)
         burden = exact_burden(weight, prevalence)
-        total = sum(burden)
-        estimated = (weight .* prevalence) * total / sum(weight .* prevalence)
+        estimated = burden_gen(weight, prevalence)
         rel = relerr(estimated, burden)
         relerr_and_prevalence[:, 1, t] = rel
         relerr_and_prevalence[:, 2, t] = prevalence
