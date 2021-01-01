@@ -160,6 +160,30 @@ function fake_burden(weights, prevalences)
     w * total / sum(w)
 end
 
+function fake3_burden(weights, prevalences)
+    total = total_burden(weights, prevalences)
+    w = weights .* prevalences
+    rho = w .* (1 - total)
+    rho * total / sum(rho)
+end
+
+"""
+Another try at weighting the fake burden. Try calculating burden for n-1
+and using those values as weights.
+"""
+function fake2_burden(weights, prevalences)
+    total = total_burden(weights, prevalences)
+    reduced = similar(weights)
+    reduced_p = similar(prevalences)
+    for ridx in 1:length(prevalences)
+        reduced_p .= prevalences
+        reduced_p[ridx] = 0.99 * prevalences[ridx]
+        reduced[ridx] = 1 .- total_burden(weights, reduced_p)
+    end
+    reduced_product = weights .* prevalences .* reduced
+    reduced_product * total / sum(reduced_product)
+end
+
 
 relerr(observed, expected) = (observed .- expected) ./ observed
 
@@ -199,15 +223,15 @@ Error in the fake burden is above 10%, even for `cnt` causes.
 """
 function fake_burden_basic_plot(fake_func, cnt)
     plotter = scatter
-    plot_cnt = 20
+    plot_cnt = 5
     for i in 1:plot_cnt
         w = rand(cnt)
         p = rand(cnt)
         exact = exact_burden(w, p)
         fake = fake_func(w, p)
         rplot = plotter(
-                fake,
                 exact,
+                fake,
                 markercolor = get(ColorSchemes.tab20b, (i-1)/(plot_cnt - 1)),
                 legend = false
                 )
